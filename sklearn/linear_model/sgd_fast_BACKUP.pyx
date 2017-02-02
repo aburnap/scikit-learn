@@ -16,7 +16,6 @@ from time import time
 
 cimport cython
 from libc.math cimport exp, log, sqrt, pow, fabs
-from libc.stdlib cimport rand, RAND_MAX
 cimport numpy as np
 cdef extern from "sgd_fast_helpers.h":
     bint skl_isfinite(double) nogil
@@ -240,13 +239,7 @@ cdef class LogDp(Classification):
             return exp(-z)
         if z < -18:
             return -z
-        #return log(1.0 + exp(-z)) + np.random.laplace(loc=0, scale=self.epsilon)
-       
-        # we return a random Laplace distributed R.V. by log of ratio of two uniform R.V.
-        cdef double r1 = rand()/(RAND_MAX*1.0)
-        cdef double r2 = rand()/(RAND_MAX*1.0)
-
-        return log(1.0 + exp(-z)) + self.dpepsilon * log(r1/r2)
+        return log(1.0 + exp(-z)) + np.random.laplace(loc=0, scale=self.epsilon)
 
     cdef double _dloss(self, double p, double y) nogil:
         cdef double z = p * y
@@ -258,7 +251,7 @@ cdef class LogDp(Classification):
         return -y / (exp(z) + 1.0)
 
     def __reduce__(self):
-        return LogDp, (self.depsilon)
+        return LogDp, ()
 
 cdef class SquaredLoss(Regression):
     """Squared loss traditional used in linear regression."""
@@ -269,7 +262,7 @@ cdef class SquaredLoss(Regression):
         return p - y
 
     def __reduce__(self):
-        return SquaredLoss, ()
+        return SquaredLoss, (self.depsilon)
 
 
 cdef class Huber(Regression):

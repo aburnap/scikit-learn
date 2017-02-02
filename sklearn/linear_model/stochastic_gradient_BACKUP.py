@@ -26,7 +26,6 @@ from ..utils import deprecated
 from .sgd_fast import Hinge
 from .sgd_fast import SquaredHinge
 from .sgd_fast import Log
-from .sgd_fast import LogDp
 from .sgd_fast import ModifiedHuber
 from .sgd_fast import SquaredLoss
 from .sgd_fast import Huber
@@ -40,8 +39,6 @@ LEARNING_RATE_TYPES = {"constant": 1, "optimal": 2, "invscaling": 3,
 PENALTY_TYPES = {"none": 0, "l2": 2, "l1": 1, "elasticnet": 3}
 
 DEFAULT_EPSILON = 0.1
-
-DEFAULT_DPEPSILON = 0.1
 # Default value of ``epsilon`` parameter.
 
 
@@ -50,14 +47,13 @@ class BaseSGD(six.with_metaclass(ABCMeta, BaseEstimator, SparseCoefMixin)):
 
     def __init__(self, loss, penalty='l2', alpha=0.0001, C=1.0,
                  l1_ratio=0.15, fit_intercept=True, n_iter=5, shuffle=True,
-                 verbose=0, epsilon=0.1, dpepsilon=0.1, random_state=None,
+                 verbose=0, epsilon=0.1, random_state=None,
                  learning_rate="optimal", eta0=0.0, power_t=0.5,
                  warm_start=False, average=False):
         self.loss = loss
         self.penalty = penalty
         self.learning_rate = learning_rate
         self.epsilon = epsilon
-        self.dpepsilon = dpepsilon
         self.alpha = alpha
         self.C = C
         self.l1_ratio = l1_ratio
@@ -115,8 +111,6 @@ class BaseSGD(six.with_metaclass(ABCMeta, BaseEstimator, SparseCoefMixin)):
             if loss in ('huber', 'epsilon_insensitive',
                         'squared_epsilon_insensitive'):
                 args = (self.epsilon, )
-            if loss in ('logdp'):
-                args = (self.dpepsilon,)
             return loss_class(*args)
         except KeyError:
             raise ValueError("The loss %s is not supported. " % loss)
@@ -303,7 +297,6 @@ class BaseSGDClassifier(six.with_metaclass(ABCMeta, BaseSGD,
         "squared_hinge": (SquaredHinge, 1.0),
         "perceptron": (Hinge, 0.0),
         "log": (Log, ),
-        "logdp":(LogDp, DEFAULT_DPEPSILON),
         "modified_huber": (ModifiedHuber, ),
         "squared_loss": (SquaredLoss, ),
         "huber": (Huber, DEFAULT_EPSILON),
@@ -315,7 +308,7 @@ class BaseSGDClassifier(six.with_metaclass(ABCMeta, BaseSGD,
     @abstractmethod
     def __init__(self, loss="hinge", penalty='l2', alpha=0.0001, l1_ratio=0.15,
                  fit_intercept=True, n_iter=5, shuffle=True, verbose=0,
-                 epsilon=DEFAULT_EPSILON, dpepsilon=DEFAULT_DPEPSILON, n_jobs=1, random_state=None,
+                 epsilon=DEFAULT_EPSILON, n_jobs=1, random_state=None,
                  learning_rate="optimal", eta0=0.0, power_t=0.5,
                  class_weight=None, warm_start=False, average=False):
 
@@ -325,7 +318,6 @@ class BaseSGDClassifier(six.with_metaclass(ABCMeta, BaseSGD,
                                                 n_iter=n_iter, shuffle=shuffle,
                                                 verbose=verbose,
                                                 epsilon=epsilon,
-                                                dpepsilon=dpepsilon,
                                                 random_state=random_state,
                                                 learning_rate=learning_rate,
                                                 eta0=eta0, power_t=power_t,
@@ -631,10 +623,6 @@ class SGDClassifier(BaseSGDClassifier):
         For epsilon-insensitive, any differences between the current prediction
         and the correct label are ignored if they are less than this threshold.
 
-    dpepsilon : float
-        Epsilon value for in differential privacy budget. This will be added to
-        the objective function.
-
     n_jobs : integer, optional
         The number of CPUs to use to do the OVA (One Versus All, for
         multi-class problems) computation. -1 means 'all CPUs'. Defaults
@@ -698,7 +686,7 @@ class SGDClassifier(BaseSGDClassifier):
     >>> clf = linear_model.SGDClassifier()
     >>> clf.fit(X, Y)
     ... #doctest: +NORMALIZE_WHITESPACE
-    SGDClassifier(alpha=0.0001, average=False, class_weight=None, epsilon=0.1, dpepsilon=0.1,
+    SGDClassifier(alpha=0.0001, average=False, class_weight=None, epsilon=0.1,
             eta0=0.0, fit_intercept=True, l1_ratio=0.15,
             learning_rate='optimal', loss='hinge', n_iter=5, n_jobs=1,
             penalty='l2', power_t=0.5, random_state=None, shuffle=True,
@@ -714,13 +702,13 @@ class SGDClassifier(BaseSGDClassifier):
 
     def __init__(self, loss="hinge", penalty='l2', alpha=0.0001, l1_ratio=0.15,
                  fit_intercept=True, n_iter=5, shuffle=True, verbose=0,
-                 epsilon=DEFAULT_EPSILON, dpepsilon=DEFAULT_DPEPSILON, n_jobs=1, random_state=None,
+                 epsilon=DEFAULT_EPSILON, n_jobs=1, random_state=None,
                  learning_rate="optimal", eta0=0.0, power_t=0.5,
                  class_weight=None, warm_start=False, average=False):
         super(SGDClassifier, self).__init__(
             loss=loss, penalty=penalty, alpha=alpha, l1_ratio=l1_ratio,
             fit_intercept=fit_intercept, n_iter=n_iter, shuffle=shuffle,
-            verbose=verbose, epsilon=epsilon, dpepsilon=dpepsilon, n_jobs=n_jobs,
+            verbose=verbose, epsilon=epsilon, n_jobs=n_jobs,
             random_state=random_state, learning_rate=learning_rate, eta0=eta0,
             power_t=power_t, class_weight=class_weight, warm_start=warm_start,
             average=average)
@@ -773,8 +761,6 @@ class SGDClassifier(BaseSGDClassifier):
 
     def _predict_proba(self, X):
         if self.loss == "log":
-            return self._predict_proba_lr(X)
-        if self.loss == "logdp":
             return self._predict_proba_lr(X)
 
         elif self.loss == "modified_huber":
