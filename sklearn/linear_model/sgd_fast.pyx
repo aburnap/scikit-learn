@@ -255,7 +255,12 @@ cdef class LogDp(Classification):
             return exp(-z) * -y
         if z < -18.0:
             return -y
-        return -y / (exp(z) + 1.0)
+
+         # we return a random Laplace distributed R.V. by log of ratio of two uniform R.V.
+        cdef double r1 = rand()/(RAND_MAX*1.0)
+        cdef double r2 = rand()/(RAND_MAX*1.0)
+
+        return -y / (exp(z) + 1.0) + self.dpepsilon * log(r1/r2)
 
     def __reduce__(self):
         return LogDp, (self.depsilon)
